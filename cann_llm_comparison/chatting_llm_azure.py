@@ -32,7 +32,7 @@ class ChattingLLMAzure():
         Initializes the ChattingLLMAzure.
         """
         self._model_type        = "gpt-4o"
-        self._max_output_tokens = 500
+        self._max_output_tokens = 2500
         self._env               = None
         self._tokenization      = None
         self._client            = None
