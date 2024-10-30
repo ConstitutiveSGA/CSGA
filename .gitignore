@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Input-/Output-Dir
+input/
+output/
+
+# Access tokens
+.env
+
+# Virtual environment
+env/
+
+# Pycharm
+.idea
+
+# VS Code
+.vscode/
+
+# VS
+.vs/
+*.pyproj
+*.sln
