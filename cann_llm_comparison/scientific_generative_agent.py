@@ -31,10 +31,17 @@ class ScientificGenerativeAgent():
 
     def run(self):
         system_prompt = self._write_system_prompt()
-        user_prompt   = self._write_user_prompt()
         fit_code      = self._write_fit_code()
-        
-        iterations = 25
+        if   self._config["problem"] == "treloar":
+            user_prompt = self._write_treloar_user_prompt()
+        elif self._config["problem"] == "brain":
+            user_prompt = self._write_brain_user_prompt()
+        elif self._config["problem"] == "synthetic":
+            user_prompt = self._write_synthetic_user_prompt()
+        else:
+            raise ValueError("Invalid problem type.")
+
+        iterations = 10
         for iteration in range(iterations):
             # Generate and evaluate model
             def _recursive_generate_and_evaluate_model(attempts=0, max_attempts=3):
@@ -60,13 +67,13 @@ class ScientificGenerativeAgent():
 
     def _generate_and_evaluate_model(self, system_prompt, user_prompt, fit_code):
         # Outer-Level Optimization: Ask LLM for forward equation
-        extension = ""
+        previous = ""
         for idx, (top_k_model_code, top_k_model_loss) in enumerate(self._top_k_models):
-            extension += f"### Previous iteration #{idx}:\n\n{                   top_k_model_code}\n\n"
-            extension += f"### Feedback on previous iteration #{idx}:\n\nLoss = {top_k_model_loss}\n\n"
-        user_prompt = extension + user_prompt
+            previous += f"### Previous iteration #{idx}:\n\n{                   top_k_model_code}\n\n"
+            previous += f"### Feedback on previous iteration #{idx}:\n\nLoss = {top_k_model_loss}\n\n"
+        user_prompt = previous + user_prompt
         messages = [
-            {"role":"system", "content":system_prompt}, {"role":"user", "content":user_prompt}
+            {"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}
         ]    
         response, _ = self._llm.chat(messages)
                 
@@ -92,7 +99,18 @@ class ScientificGenerativeAgent():
 
 
     def _load_data(self):
-        path = os.path.join(self._config["input_dir"], self._config["data_file"])
+        if   self._config["problem"] == "treloar":
+            self._load_treloar_data()
+        elif self._config["problem"] == "brain":
+            self._load_brain_data()
+        elif self._config["problem"] == "synthetic":
+            self._load_synthetic_data()
+        else:
+            raise ValueError("Invalid problem type.")
+        
+        
+    def _load_treloar_data(self):
+        path = os.path.join(self._config["input_dir"], "treloar", "treloar_uniaxial_tension.csv")
         data = pandas.read_csv(
             filepath_or_buffer = path,
             delimiter          = ",",
@@ -108,6 +126,14 @@ class ScientificGenerativeAgent():
         self._train_data_y = train_data["stresses"].reset_index(drop=True)
         self._test_data_x  = test_data["strains"].reset_index(  drop=True)
         self._test_data_y  = test_data["stresses"].reset_index( drop=True)
+
+
+    def _load_brain_data(self):
+        pass
+
+
+    def _load_synthetic_data(self):
+        pass
 
 
     def _create_output_dir(self):
@@ -149,7 +175,7 @@ Do not provide any information that is not requested. Always document your code 
 You are very familiar with Python and PyTorch. Do not use any external libraries other than the libraries used in the examples.
 '''
 
-    def _write_user_prompt(self):
+    def _write_treloar_user_prompt(self):
         return '''
 ### Code Requirements
 
@@ -206,20 +232,20 @@ class Physics(torch.nn.Module):
 
     def _write_fit_code(self):
         return '''
-    def fit(self, x, y, epochs=50, lr=0.01):
+    def fit(self, x, y, epochs=200, lr=0.001, factor=0.1, patience=10):
         """
         Trains the regression model.
 
         Args:
-            x (torch.tensor): Input tensor.
-            y (torch.tensor): Target tensor.
-            epochs (int, optional): Number of epochs to train. Default is 1000.
-            lr (float, optional): Learning rate for the optimizer. Default is 0.01.
+            x (torch.tensor):       Input tensor.
+            y (torch.tensor):       Target tensor.
+            epochs (int, optional): Number of epochs to train.
+            lr (float, optional):   Learning rate for the optimizer.
 
-        This method trains the model using Stochastic Gradient Descent (SGD) and prints the loss
-        every 100 epochs.
+        This method trains the model using a torch optimizer.
         """
-        optimizer = torch.optim.SGD(self.params, lr=lr)
+        optimizer = torch.optim.Adam(self.params, lr=lr)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=factor, patience=patience)
         
         for epoch in range(epochs):
             optimizer.zero_grad()
@@ -227,7 +253,7 @@ class Physics(torch.nn.Module):
             loss   = torch.nn.MSELoss()(y_pred, y)
             loss.backward()
             optimizer.step()
+            scheduler.step(loss)
             
-            if (epoch+1) % 10 == 0:
-                print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
+        print(f'Final loss: {loss.item():.4f}')
 '''

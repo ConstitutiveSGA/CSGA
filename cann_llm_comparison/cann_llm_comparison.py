@@ -16,7 +16,7 @@ def main():
 def _set_config():
     return {
         "input_dir":  os.path.join("..", "input"),
-        "data_file":  "treloar_uniaxial_tension.csv",
+        "problem":    "treloar", # "brain", "synthetic", "treloar"
         "output_dir": os.path.join("..", "output"),
     }
 
