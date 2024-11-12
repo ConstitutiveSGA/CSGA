@@ -9,61 +9,56 @@ class Evaluator():
 
     def evaluate(self, iteration, loader, model):
         match self._config["problem"]:
-            case "treloar_uniaxial_tension" | \
-                 "treloar_biaxial_tension"  | \
-                 "treloar_shear":
-                return self._evaluate_treloar(iteration, loader, model)
-            case "synthetic_a_uniaxial_tension" | \
-                 "synthetic_a_biaxial_tension"  | \
-                 "synthetic_a_shear"            | \
-                 "synthetic_b_uniaxial_tension" | \
-                 "synthetic_b_biaxial_tension"  | \
-                 "synthetic_b_shear":
+            case "synthetic_a" | "synthetic_b":
                 return self._evaluate_synthetic(iteration, loader, model)
-            case "brain_tension":
-                return self._evaluate_brain_tension(iteration, loader, model)
-            case "brain_compression":
-                return self._evaluate_brain_compression(iteration, loader, model)
-            case "brain_shear":
-                return self._evaluate_brain_shear(iteration, loader, model)
+            case "brain":
+                return self._evaluate_brain(iteration, loader, model)
             case _:
                 raise ValueError("Invalid problem type.")
 
 
-    def _evaluate_treloar(self, iteration, loader, model):
-        train_predictions = model.forward(loader.get_train_data_x()).detach()
-        test_predictions  = model.forward(loader.get_test_data_x()).detach()
-        return self._evaluate(iteration, loader, train_predictions, test_predictions)
-        
-
     def _evaluate_synthetic(self, iteration, loader, model):
-        train_predictions = model.forward(loader.get_train_data_x()).detach()
-        test_predictions  = model.forward(loader.get_test_data_x()).detach()
-        return self._evaluate(iteration, loader, train_predictions, test_predictions)
+        train_data_x = torch.cat(list(loader.get_train_data_x().values()))
+        train_data_y = torch.cat(list(loader.get_train_data_y().values()))
+        test_data_x  = torch.cat(list(loader.get_test_data_x( ).values()))
+        test_data_y  = torch.cat(list(loader.get_test_data_y( ).values()))
 
+        train_preds = model.forward(train_data_x).detach()
+        test_preds  = model.forward(test_data_x ).detach()
 
-    def _evaluate_brain_tension(self, iteration, loader, model):     # extract sigma_1_1
-        train_predictions = model.forward(loader.get_train_data_x()).detach()[:,0,0].unsqueeze(1)
-        test_predictions  = model.forward(loader.get_test_data_x()).detach( )[:,0,0].unsqueeze(1)
-        return self._evaluate(iteration, loader, train_predictions, test_predictions)
-        
+        train_loss = torch.nn.MSELoss()(train_preds, train_data_y).item()
+        test_loss  = torch.nn.MSELoss()( test_preds,  test_data_y).item()
 
-    def _evaluate_brain_compression(self, iteration, loader, model): # extract sigma_1_1
-        train_predictions = model.forward(loader.get_train_data_x()).detach()[:,0,0].unsqueeze(1)
-        test_predictions  = model.forward(loader.get_test_data_x()).detach( )[:,0,0].unsqueeze(1)
-        return self._evaluate(iteration, loader, train_predictions, test_predictions)
-
-
-    def _evaluate_brain_shear(self, iteration, loader, model):       # extract sigma_1_2
-        train_predictions = model.forward(loader.get_train_data_x()).detach()[:,0,1].unsqueeze(1)
-        test_predictions  = model.forward(loader.get_test_data_x()).detach( )[:,0,1].unsqueeze(1)
-        return self._evaluate(iteration, loader, train_predictions, test_predictions)
-
-    
-    def _evaluate(self, iteration, loader, train_predictions, test_predictions):
-        train_loss = torch.nn.MSELoss()(train_predictions, loader.get_train_data_y()).item()
-        test_loss  = torch.nn.MSELoss()(test_predictions,  loader.get_test_data_y()).item()
         self._print(iteration, train_loss, test_loss)
+
+        return train_loss
+
+
+    def _evaluate_brain(self, iteration, loader, model):
+        train_data_x = loader.get_train_data_x()
+        train_data_y = loader.get_train_data_y()
+        test_data_x  = loader.get_test_data_x()
+        test_data_y  = loader.get_test_data_y()
+
+        train_pred                 = {}
+        train_pred["tens"]         = model.forward(train_data_x["tens"        ]).detach()[:,0,0]
+        train_pred["comp"]         = model.forward(train_data_x["comp"        ]).detach()[:,0,0]
+        train_pred["simple_shear"] = model.forward(train_data_x["simple_shear"]).detach()[:,0,1]
+        train_pred                 = torch.cat(list(train_pred.values()))
+        test_pred                  = {}
+        test_pred["tens"]          = model.forward(test_data_x["tens"        ]).detach()[:,0,0]
+        test_pred["comp"]          = model.forward(test_data_x["comp"        ]).detach()[:,0,0]
+        test_pred["simple_shear"]  = model.forward(test_data_x["simple_shear"]).detach()[:,0,1]
+        test_pred                  = torch.cat(list(test_pred.values()))
+
+        train_data_y = torch.cat(list(train_data_y.values())).squeeze(1)
+        test_data_y  = torch.cat(list( test_data_y.values())).squeeze(1)
+
+        train_loss = torch.nn.MSELoss()(train_pred, train_data_y).item()
+        test_loss  = torch.nn.MSELoss()( test_pred,  test_data_y).item()
+
+        self._print(iteration, train_loss, test_loss)
+
         return train_loss
 
 

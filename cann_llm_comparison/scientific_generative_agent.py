@@ -1,4 +1,5 @@
 ﻿import re
+import copy
 
 import loader
 import exporter
@@ -16,11 +17,11 @@ class ScientificGenerativeAgent():
         self._loader        = loader.Loader(             config)
         self._evaluator     = evaluator.Evaluator(       config)
         self._exporter      = exporter.Exporter(         config)
-        
-        self._iterations    = 6
+
+        self._iterations    = 3
         self._top_k         = 3
         self._top_k_models  = []
-        
+
 
     def set_up(self):
         self._llm.set_up()
@@ -48,7 +49,7 @@ class ScientificGenerativeAgent():
                         return None
             model, model_code = _recursive_generate_and_evaluate_model()
             loss              = self._evaluator.evaluate(iteration, self._loader, model)
-            
+
             self._save_model(model, model_code, loss)
 
         model, model_code, _ = self._load_best_model()
@@ -64,9 +65,9 @@ class ScientificGenerativeAgent():
         user_prompt = prev + user_prompt
         messages = [
             {"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}
-        ]    
+        ]
         response, _ = self._llm.chat(messages)
-                
+
         # Execution of proposed code
         model_code = re.findall(r"```python(.*?)```", response, re.DOTALL)[0].strip()
         namespace = {}
@@ -74,17 +75,17 @@ class ScientificGenerativeAgent():
         model = namespace["Physics"]()
 
         # Inner-Level Optimization: Optimize parameters
-        model.fit(x=self._loader.get_train_data_x(), y=self._loader.get_train_data_y())
+        model.fit(x = self._loader.get_train_data_x(), y = self._loader.get_train_data_y())
 
         return model, model_code
 
 
     def _save_model(self, model, model_code, loss):
-        self._top_k_models.append([model, model_code, loss]) # todo: check during debugging
+        self._top_k_models.append([copy.deepcopy(model), model_code, loss])
         # Sort models by loss
         self._top_k_models.sort(key=lambda x: x[2])
         # Keep only the top k models
-        self._top_k_models = self._top_k_models[:self._top_k]  
+        self._top_k_models = self._top_k_models[:self._top_k]
 
 
     def _load_best_model(self):
