@@ -27,6 +27,10 @@ You are very familiar with Python and PyTorch. Do not use any external libraries
 
     def _write_synthetic_a_and_brain_user_prompt(self):
         return '''
+## Task Requirements
+1. Implement a PyTorch module that computes the First Piola-Kirchhoff stress tensor P from the deformation gradient tensor F.
+
+
 ## Format Requirements
 
 ### PyTorch Tips
@@ -90,6 +94,10 @@ class Physics(torch.nn.Module):
 
     def _write_synthetic_b_user_prompt(self):
         return '''
+## Task Requirements
+1. Implement a PyTorch module that computes the Second Piola-Kirchhoff stress tensor S from the Right Cauchy-Green Deformation Tensor RCG.
+
+
 ## Format Requirements
 
 ### PyTorch Tips
