@@ -85,6 +85,8 @@ class ChattingLLMAzure():
 
 
     def _select_model_type(self):
+        if self._env["deployment"] == "standard-gpt-4-32k":
+            return "gpt-4-32k"
         if self._env["deployment"] == "standard-gpt-4o":
             return "gpt-4o"
         if self._env["deployment"] == "standard-gpt-o1-preview":
@@ -93,6 +95,8 @@ class ChattingLLMAzure():
 
 
     def _select_context_length(self):
+        if self._model_type == "gpt-4-32k":
+            return 32000
         if self._model_type == "gpt-4o":
             return 128000
         if self._model_type == "o1-preview":
@@ -116,7 +120,7 @@ class ChattingLLMAzure():
 
     def _generate_response(self, messages):
         chat_completion_choices = 1
-        if   self._model_type == "gpt-4o":
+        if   self._model_type == "gpt-4-32k" or self._model_type == "gpt-4o":
             response_structure = self._generate_4o_response(messages, chat_completion_choices)
         elif self._model_type == "o1-preview":
             response_structure = self._generate_o1_response(messages, chat_completion_choices)
