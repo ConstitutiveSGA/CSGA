@@ -69,9 +69,9 @@ class ChattingLLMAzure():
             tuple: A tuple containing the response and the finish reason.
         """
         self._check_chat_length(messages)
-        response, finish_reason = self._generate_response(messages)
-        response                = self._clean_response_from_special_chars(response)
-        return response, finish_reason
+        response = self._generate_response(messages)
+        response = self._clean_response_from_special_chars(response)
+        return response
 
 
     def _load_env(self):
@@ -125,7 +125,10 @@ class ChattingLLMAzure():
 
         response      = response_structure.choices[0].message.content
         finish_reason = response_structure.choices[0].finish_reason
-        return response, finish_reason
+        if finish_reason != "stop":
+            raise ValueError(f"Call to LLM finished with reason: {finish_reason}")
+
+        return response
 
 
     def _generate_4o_response(self, messages, chat_completion_choices):
