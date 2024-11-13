@@ -30,7 +30,7 @@ class ScientificGenerativeAgent():
 
 
     def run(self):
-        system_prompt = self._prompt_writer.write_system_prompt()
+        system_prompt = f"## Scenario:\n{self._prompt_writer.write_system_prompt()}\n"
         user_prompt   = self._prompt_writer.write_user_prompt()
         fit_code      = self._prompt_writer.write_fit_code()
 
@@ -62,9 +62,9 @@ class ScientificGenerativeAgent():
         for idx, (_, top_k_model_code, top_k_model_loss) in enumerate(self._top_k_models):
             prev += f"### Previous iteration #{idx}:\n\n{                   top_k_model_code}\n\n"
             prev += f"### Feedback on previous iteration #{idx}:\n\nLoss = {top_k_model_loss}\n\n"
-        user_prompt = prev + user_prompt
+        user_prompt = system_prompt + prev + user_prompt
         messages = [
-            {"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}
+            {"role": "user", "content": user_prompt}
         ]
         response, _ = self._llm.chat(messages)
 
