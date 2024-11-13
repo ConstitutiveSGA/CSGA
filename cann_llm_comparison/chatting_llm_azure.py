@@ -32,7 +32,7 @@ class ChattingLLMAzure():
         Initializes the ChattingLLMAzure.
         """
         self._model_type        = None
-        self._max_output_tokens = 5000
+        self._max_output_tokens = 4000
         self._env               = None
         self._tokenization      = None
         self._client            = None
