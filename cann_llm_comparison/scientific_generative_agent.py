@@ -18,7 +18,7 @@ class ScientificGenerativeAgent():
         self._evaluator     = evaluator.Evaluator(       config)
         self._exporter      = exporter.Exporter(         config)
 
-        self._iterations    = 3
+        self._iterations    = 5
         self._top_k         = 3
         self._top_k_models  = []
 
@@ -66,7 +66,7 @@ class ScientificGenerativeAgent():
         messages = [
             {"role": "user", "content": user_prompt}
         ]
-        response, _ = self._llm.chat(messages)
+        response = self._llm.chat(messages)
 
         # Execution of proposed code
         model_code = re.findall(r"```python(.*?)```", response, re.DOTALL)[0].strip()
