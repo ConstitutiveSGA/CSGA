@@ -31,8 +31,8 @@ class ChattingLLMAzure():
         """
         Initializes the ChattingLLMAzure.
         """
-        self._model_type        = "gpt-4o"
-        self._max_output_tokens = 2500
+        self._model_type        = None
+        self._max_output_tokens = 5000
         self._env               = None
         self._tokenization      = None
         self._client            = None
@@ -42,7 +42,8 @@ class ChattingLLMAzure():
         """
         Sets up the environment and tokenization settings for the language model.
         """
-        self._env = self._load_env()
+        self._env        = self._load_env()
+        self._model_type = self._select_model_type()
         self._tokenization = {
                 "context_length":     self._select_context_length(), 
                 "encoding":           tiktoken.encoding_for_model(self._model_type),
@@ -83,13 +84,19 @@ class ChattingLLMAzure():
         }
 
 
+    def _select_model_type(self):
+        if self._env["deployment"] == "standard-gpt-4o":
+            return "gpt-4o"
+        if self._env["deployment"] == "standard-gpt-o1-preview":
+            return "o1-preview"
+        raise ValueError(f"Model type for deployment {self._env['deployment']} unset!")
+
+
     def _select_context_length(self):
         if self._model_type == "gpt-4o":
             return 128000
-        if self._model_type == "gpt-4-32k-0613":
-            return 32000
-        if self._model_type == "gpt-3.5-turbo-16k-0613":
-            return 16000
+        if self._model_type == "o1-preview":
+            return 128000
         raise ValueError(f"Context length for model {self._model_type} unset!")
 
 
@@ -109,16 +116,35 @@ class ChattingLLMAzure():
 
     def _generate_response(self, messages):
         chat_completion_choices = 1
-        response_structure = self._client.chat.completions.create(
+        if   self._model_type == "gpt-4o":
+            response_structure = self._generate_4o_response(messages, chat_completion_choices)
+        elif self._model_type == "o1-preview":
+            response_structure = self._generate_o1_response(messages, chat_completion_choices)
+        else:
+            raise ValueError(f"Model type {self._model_type} not recognized!")
+
+        response      = response_structure.choices[0].message.content
+        finish_reason = response_structure.choices[0].finish_reason
+        return response, finish_reason
+
+
+    def _generate_4o_response(self, messages, chat_completion_choices):
+        return self._client.chat.completions.create(
             model       = self._env["deployment"],
             messages    = messages,
             max_tokens  = self._max_output_tokens,
             n           = chat_completion_choices,
             temperature = 1.0
         )
-        response      = response_structure.choices[0].message.content
-        finish_reason = response_structure.choices[0].finish_reason
-        return response, finish_reason
+
+
+    def _generate_o1_response(self, messages, chat_completion_choices):
+        return self._client.chat.completions.create(
+            model                 = self._env["deployment"],
+            messages              = messages,
+            max_completion_tokens = self._max_output_tokens,
+            n                     = chat_completion_choices,
+        )
 
 
     def _clean_response_from_special_chars(self, response):
