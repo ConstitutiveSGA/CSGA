@@ -224,16 +224,17 @@ class Exporter():
 
         train_mse = torch.nn.MSELoss()(train_predictions, train_data_y).item()
         test_mse  = torch.nn.MSELoss()( test_predictions,  test_data_y).item()
-        train_r2  = torcheval.metrics.functional.r2_score(train_predictions, train_data_y).item()
-        test_r2   = torcheval.metrics.functional.r2_score( test_predictions,  test_data_y).item()
+        r2 = torcheval.metrics.functional.r2_score(
+            input  = torch.cat((train_predictions, test_predictions)),
+            target = torch.cat((train_data_y,      test_data_y)),
+        ).item()
 
         self._export_loss(
             file      = "loss",
             key       = key.replace("-", "_").title(),
             train_mse = train_mse,
             test_mse  = test_mse,
-            train_r2  = train_r2,
-            test_r2   = test_r2
+            r2        = r2,
         )
         self._export_data(
             file        = "training_data",
@@ -256,11 +257,10 @@ class Exporter():
             train_data_x      = train_data_x,
             train_data_y      = train_data_y,
             train_predictions = train_predictions,
-            train_r2          = train_r2,
             test_data_x       = test_data_x,
             test_data_y       = test_data_y,
             test_predictions  = test_predictions,
-            test_r2           = test_r2,
+            r2                = r2,
             xlabel            = xlabel,
             ylabel            = ylabel,
             inverted_x        = inverted_x,
@@ -286,11 +286,11 @@ class Exporter():
                 file.write(f"Parameter {index}: {param.item():.8f}\n")
 
 
-    def _export_loss(self, file, key, train_mse, test_mse, train_r2, test_r2):
+    def _export_loss(self, file, key, train_mse, test_mse, r2):
         path = os.path.join(self._output_dir, f"{key}_{file}.txt")
         with open(path, mode="w", encoding="utf-8") as file:
             file.write(f"Train MSE: {train_mse:.4f}\nTest MSE: {test_mse:.4f}\n")
-            file.write(f"Train R2: {  train_r2:.4f}\nTest R2: {  test_r2:.4f}")
+            file.write(f"R2: {r2:.4f}")
 
 
     def _export_data(self, file, key, data_x, data_y, predictions):
@@ -303,7 +303,7 @@ class Exporter():
 
 
     def _plot_predictions(self, file, key, train_data_x, train_data_y, train_predictions,
-                          train_r2, test_data_x, test_data_y, test_predictions, test_r2,
+                          test_data_x, test_data_y, test_predictions, r2,
                           xlabel, ylabel, inverted_x, inverted_y, title):
         path = os.path.join(self._output_dir, f"{key}_{file}.png")
         matplotlib.pyplot.figure()
@@ -339,8 +339,8 @@ class Exporter():
             matplotlib.pyplot.gca().invert_yaxis()
         matplotlib.pyplot.title(title)
         handles, labels = matplotlib.pyplot.gca().get_legend_handles_labels()
-        handles.extend([matplotlib.pyplot.Line2D([], [], color='none')] * 2)
-        labels.extend([f"Train R2: {train_r2:.2f}", f"Test R2: {test_r2:.2f}"])
+        handles.append(matplotlib.pyplot.Line2D([], [], color='none'))
+        labels.append(f"R2: {r2:.2f}")
         matplotlib.pyplot.legend(handles, labels)
         matplotlib.pyplot.savefig(path)
         matplotlib.pyplot.close()
