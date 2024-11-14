@@ -18,50 +18,46 @@ class Evaluator():
 
 
     def _evaluate_synthetic(self, iteration, loader, model):
-        train_data_x = torch.cat(list(loader.get_train_data_x().values()))
-        train_data_y = torch.cat(list(loader.get_train_data_y().values()))
-        test_data_x  = torch.cat(list(loader.get_test_data_x( ).values()))
-        test_data_y  = torch.cat(list(loader.get_test_data_y( ).values()))
+        train_data_x = loader.get_train_data_x()
+        train_data_y = loader.get_train_data_y()
 
-        train_preds = model.forward(train_data_x).detach()
-        test_preds  = model.forward(test_data_x ).detach()
+        train_pred            = {}
+        train_pred["uni-x"]   = model.forward(train_data_x["uni-x"  ]).detach()[:,0,0]
+        train_pred["equi"]    = model.forward(train_data_x["equi"   ]).detach()[:,0,0]
+        train_pred["strip-x"] = model.forward(train_data_x["strip-x"]).detach()[:,0,0]
 
-        train_loss = torch.nn.MSELoss()(train_preds, train_data_y).item()
-        test_loss  = torch.nn.MSELoss()( test_preds,  test_data_y).item()
+        train_loss            = {}
+        train_loss["uni-x"]   = torch.nn.MSELoss()(train_pred["uni-x"]  , train_data_y["uni-x"][  :,0,0]).item()*20
+        train_loss["equi"]    = torch.nn.MSELoss()(train_pred["equi"]   , train_data_y["equi"][   :,0,0]).item()*20
+        train_loss["strip-x"] = torch.nn.MSELoss()(train_pred["strip-x"], train_data_y["strip-x"][:,0,0]).item()*20
 
-        self._print(iteration, train_loss, test_loss)
+        train_loss_line = (f"MSE [Uniaxial Tension]: {     train_loss['uni-x'  ]:.4f} / "
+                           f"MSE [Biaxial Tension]: {      train_loss['equi'   ]:.4f} / "
+                           f"MSE [Strip-Biaxial Tension]: {train_loss['strip-x']:.4f}")
 
-        return train_loss
+        print(f"Iteration {iteration}: {train_loss_line}")
+
+        return sum(train_loss.values()) / len(train_loss), train_loss_line
 
 
     def _evaluate_brain(self, iteration, loader, model):
         train_data_x = loader.get_train_data_x()
         train_data_y = loader.get_train_data_y()
-        test_data_x  = loader.get_test_data_x()
-        test_data_y  = loader.get_test_data_y()
 
         train_pred                 = {}
         train_pred["tens"]         = model.forward(train_data_x["tens"        ]).detach()[:,0,0]
         train_pred["comp"]         = model.forward(train_data_x["comp"        ]).detach()[:,0,0]
         train_pred["simple_shear"] = model.forward(train_data_x["simple_shear"]).detach()[:,0,1]
-        train_pred                 = torch.cat(list(train_pred.values()))
-        test_pred                  = {}
-        test_pred["tens"]          = model.forward(test_data_x["tens"        ]).detach()[:,0,0]
-        test_pred["comp"]          = model.forward(test_data_x["comp"        ]).detach()[:,0,0]
-        test_pred["simple_shear"]  = model.forward(test_data_x["simple_shear"]).detach()[:,0,1]
-        test_pred                  = torch.cat(list(test_pred.values()))
 
-        train_data_y = torch.cat(list(train_data_y.values())).squeeze(1)
-        test_data_y  = torch.cat(list( test_data_y.values())).squeeze(1)
+        train_loss                 = {}
+        train_loss["tens"]         = torch.nn.MSELoss()(train_pred["tens"]        , train_data_y["tens"]        .squeeze(1)).item()*20
+        train_loss["comp"]         = torch.nn.MSELoss()(train_pred["comp"]        , train_data_y["comp"]        .squeeze(1)).item()*20
+        train_loss["simple_shear"] = torch.nn.MSELoss()(train_pred["simple_shear"], train_data_y["simple_shear"].squeeze(1)).item()*20
 
-        train_loss = torch.nn.MSELoss()(train_pred, train_data_y).item()
-        test_loss  = torch.nn.MSELoss()( test_pred,  test_data_y).item()
+        train_loss_line = (f"MSE [Tension]: {     train_loss['tens'        ]:.4f} / "
+                           f"MSE [Compression]: { train_loss['comp'        ]:.4f} / "
+                           f"MSE [Simple Shear]: {train_loss['simple_shear']:.4f}")
 
-        self._print(iteration, train_loss, test_loss)
+        print(f"Iteration {iteration}: {train_loss_line}")
 
-        return train_loss
-
-
-    def _print(self, iteration, train_loss, test_loss):
-        print(f"Iteration {iteration}: (Train loss / Test loss) - "
-              f"({train_loss:.4f} / {test_loss:.4f})")
+        return sum(train_loss.values()) / len(train_loss), train_loss_line
