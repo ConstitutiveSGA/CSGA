@@ -30,7 +30,8 @@ You are very familiar with Python and PyTorch. Do not use any external libraries
     def _write_synthetic_a_user_prompt(self, loader):
         return f'''
 ## Task Requirements
-1. In each iteration, implement a PyTorch module that computes the First Piola-Kirchhoff stress tensor P from the deformation gradient tensor F.
+1. Your task is to model the constitutive behavior of a material: in each iteration, implement a PyTorch module that computes the First Piola-Kirchhoff stress tensor P from the deformation gradient tensor F.
+2. The material is isotropic and incompressible. Feel free to experiment with different and even non physical constitutive models. The constitutive behavior searched for is non-linear.
 
 
 ## Constitutive behavior to be captured:
@@ -109,7 +110,8 @@ class Physics(torch.nn.Module):
     def _write_synthetic_b_user_prompt(self, loader):
         return f'''
 ## Task Requirements
-1. In each iteration, implement a PyTorch module that computes the Second Piola-Kirchhoff stress tensor S from the Right Cauchy-Green Deformation Tensor RCG.
+1. Your task is to model the constitutive behavior of a material: in each iteration, implement a PyTorch module that computes the Second Piola-Kirchhoff stress tensor S from the Right Cauchy-Green Deformation Tensor RCG.
+2. The material is isotropic and incompressible. Feel free to experiment with different and even non physical constitutive models. The constitutive behavior searched for is non-linear.
 
 
 ## Constitutive behavior to be captured:
@@ -188,7 +190,8 @@ class Physics(torch.nn.Module):
     def write_brain_user_prompt(self, loader):
         return f'''
 ## Task Requirements
-1. In each iteration, implement a PyTorch module that computes the First Piola-Kirchhoff stress tensor P from the deformation gradient tensor F.
+1. Your task is to model the constitutive behavior of a material: in each iteration, implement a PyTorch module that computes the First Piola-Kirchhoff stress tensor P from the deformation gradient tensor F.
+2. The material is isotropic and incompressible. Feel free to experiment with different and even non physical constitutive models. The constitutive behavior searched for is non-linear.
 
 
 ## Constitutive behavior to be captured:
