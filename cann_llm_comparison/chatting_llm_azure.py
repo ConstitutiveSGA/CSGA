@@ -63,7 +63,7 @@ class ChattingLLMAzure():
                  "gpt-4o"           | \
                  "o1-preview":
                 return tiktoken.encoding_for_model(self._env["model"])
-            case "Meta-Llama-3.1-405B-Instruct" | \
+            case "Meta-Llama-3.1-70B-Instruct" | \
                  "Meta-Llama-3.1-405B-Instruct":
                 return tiktoken.get_encoding("cl100k_base")
             case _:
@@ -74,9 +74,9 @@ class ChattingLLMAzure():
         match self._env["model"]:
             case "gpt-35-turbo-16k":
                 return 16000
-            case "gpt-4o"                       | \
-                 "o1-preview"                   | \
-                 "Meta-Llama-3.1-405B-Instruct" | \
+            case "gpt-4o"                      | \
+                 "o1-preview"                  | \
+                 "Meta-Llama-3.1-70B-Instruct" | \
                  "Meta-Llama-3.1-405B-Instruct":
                 return 128000
             case _:
@@ -99,9 +99,9 @@ class ChattingLLMAzure():
 
     def _generate_response(self, messages):
         match self._env["model"]:
-            case "gpt-35-turbo-16k"             | \
-                 "gpt-4o"                       | \
-                 "Meta-Llama-3.1-405B-Instruct" | \
+            case "gpt-35-turbo-16k"            | \
+                 "gpt-4o"                      | \
+                 "Meta-Llama-3.1-70B-Instruct" | \
                  "Meta-Llama-3.1-405B-Instruct":
                 response_struct = self._client.complete(
                     messages    = messages,
