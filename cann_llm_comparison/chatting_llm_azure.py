@@ -10,64 +10,37 @@ Classes:
 """
 
 import os
-import openai
 import dotenv
 import tiktoken
+import azure.ai.inference
+import azure.core.credentials
 
 
 class ChattingLLMAzure():
-    """
-    A class to interact with Azure's OpenAI language model for generating chat responses.
-
-    Attributes:
-        _model_type (str):            The type of the language model to use.
-        _max_output_tokens (int):     The maximum number of tokens for the output.
-        _env (dict):                  Environment variables for Azure OpenAI.
-        _tokenization (dict):         Tokenization settings for the language model.
-        _client (openai.AzureOpenAI): The client for interacting with Azure OpenAI.
-    """
 
     def __init__(self):
-        """
-        Initializes the ChattingLLMAzure.
-        """
-        self._model_type        = None
-        self._max_output_tokens = 4000
-        self._env               = None
-        self._tokenization      = None
-        self._client            = None
+        self._temperature  = 1.0
+        self._max_tokens   = 4000
+        self._env          = None
+        self._tokenization = None
+        self._client       = None
 
 
     def set_up(self):
-        """
-        Sets up the environment and tokenization settings for the language model.
-        """
-        self._env        = self._load_env()
-        self._model_type = self._select_model_type()
+        self._env          = self._load_env()
         self._tokenization = {
                 "context_length":     self._select_context_length(), 
-                "encoding":           tiktoken.encoding_for_model(self._model_type),
+                "encoding":           self._select_encoding(),
                 "tokens_per_message": 3,
                 "tokens_per_name":    1
         }
-        self._client = openai.AzureOpenAI(
-            azure_endpoint   = self._env["azure_endpoint"],
-            azure_deployment = self._env["deployment"],
-            api_version      = self._env["api_version"],
-            api_key          = self._env["api_key"],
+        self._client = azure.ai.inference.ChatCompletionsClient(
+            endpoint   = self._env["endpoint"],
+            credential = azure.core.credentials.AzureKeyCredential(self._env["key"]),
         )
 
 
     def chat(self, messages):
-        """
-        Generates a chat response from the language model.
-
-        Args:
-            messages (list): A list of messages to send to the language model.
-
-        Returns:
-            tuple: A tuple containing the response and the finish reason.
-        """
         self._check_chat_length(messages)
         response = self._generate_response(messages)
         response = self._clean_response_from_special_chars(response)
@@ -77,27 +50,37 @@ class ChattingLLMAzure():
     def _load_env(self):
         dotenv.load_dotenv()
         return {
-            "azure_endpoint": os.getenv("OPENAI_ENDPOINT"),
-            "deployment":     os.getenv("OPENAI_DEPLOYMENT"),
-            "api_key":        os.getenv("OPENAI_TOKEN"),
-            "api_version":    os.getenv("OPENAI_API_VERSION"),
+            "model":       os.getenv("AZURE_MODEL"),
+            "endpoint":    os.getenv("AZURE_ENDPOINT"),
+            "key":         os.getenv("AZURE_API_KEY"),
+            "api_version": os.getenv("AZURE_API_VERSION"),
         }
 
 
-    def _select_model_type(self):
-        if self._env["deployment"] == "standard-gpt-4o":
-            return "gpt-4o"
-        if self._env["deployment"] == "standard-gpt-o1-preview":
-            return "o1-preview"
-        raise ValueError(f"Model type for deployment {self._env['deployment']} unset!")
+    def _select_encoding(self):
+        match self._env["model"]:
+            case "gpt-35-turbo-16k" | \
+                 "gpt-4o"           | \
+                 "o1-preview":
+                return tiktoken.encoding_for_model(self._env["model"])
+            case "Meta-Llama-3.1-405B-Instruct" | \
+                 "Meta-Llama-3.1-405B-Instruct":
+                return tiktoken.get_encoding("cl100k_base")
+            case _:
+                raise ValueError(f"Encoding for model {self._env['model']} unset!")
 
 
     def _select_context_length(self):
-        if self._model_type == "gpt-4o":
-            return 128000
-        if self._model_type == "o1-preview":
-            return 128000
-        raise ValueError(f"Context length for model {self._model_type} unset!")
+        match self._env["model"]:
+            case "gpt-35-turbo-16k":
+                return 16000
+            case "gpt-4o"                       | \
+                 "o1-preview"                   | \
+                 "Meta-Llama-3.1-405B-Instruct" | \
+                 "Meta-Llama-3.1-405B-Instruct":
+                return 128000
+            case _:
+                raise ValueError(f"Context length for model {self._env['model']} unset!")
 
 
     def _check_chat_length(self, messages):
@@ -110,44 +93,36 @@ class ChattingLLMAzure():
                     input_tokens += self._tokenization["tokens_per_name"]
         input_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
 
-        if input_tokens + self._max_output_tokens > self._tokenization["context_length"]:
+        if input_tokens + self._max_tokens > self._tokenization["context_length"]:
             raise ValueError("Chat is too long, would exceed the context window!")
 
 
     def _generate_response(self, messages):
-        chat_completion_choices = 1
-        if   self._model_type == "gpt-4o":
-            response_structure = self._generate_4o_response(messages, chat_completion_choices)
-        elif self._model_type == "o1-preview":
-            response_structure = self._generate_o1_response(messages, chat_completion_choices)
-        else:
-            raise ValueError(f"Model type {self._model_type} not recognized!")
+        match self._env["model"]:
+            case "gpt-35-turbo-16k"             | \
+                 "gpt-4o"                       | \
+                 "Meta-Llama-3.1-405B-Instruct" | \
+                 "Meta-Llama-3.1-405B-Instruct":
+                response_struct = self._client.complete(
+                    messages    = messages,
+                    temperature = self._temperature,
+                    max_tokens  = self._max_tokens,
+                    model       = self._env["model"],
+                )
+            case "o1-preview":
+                response_struct = self._client.complete(
+                    messages    = messages,
+                    model       = self._env["model"],
+                )
+            case _:
+                raise ValueError(f"Response for model {self._env['model']} unset!")
 
-        response      = response_structure.choices[0].message.content
-        finish_reason = response_structure.choices[0].finish_reason
+        response      = response_struct.choices[0].message.content
+        finish_reason = response_struct.choices[0].finish_reason
         if finish_reason != "stop":
             raise ValueError(f"Call to LLM finished with reason: {finish_reason}")
 
         return response
-
-
-    def _generate_4o_response(self, messages, chat_completion_choices):
-        return self._client.chat.completions.create(
-            model       = self._env["deployment"],
-            messages    = messages,
-            max_tokens  = self._max_output_tokens,
-            n           = chat_completion_choices,
-            temperature = 1.0
-        )
-
-
-    def _generate_o1_response(self, messages, chat_completion_choices):
-        return self._client.chat.completions.create(
-            model                 = self._env["deployment"],
-            messages              = messages,
-            max_completion_tokens = self._max_output_tokens,
-            n                     = chat_completion_choices,
-        )
 
 
     def _clean_response_from_special_chars(self, response):
