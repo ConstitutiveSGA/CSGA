@@ -30,12 +30,12 @@ class ScientificGenerativeAgent():
 
 
     def run(self):
-        system_prompt = self._prompt_writer.write_system_prompt()
+        system_prompt = f"## Scenario:\n{self._prompt_writer.write_system_prompt()}\n"
         user_prompt   = self._prompt_writer.write_user_prompt(loader=self._loader)
         fit_code      = self._prompt_writer.write_fit_code()
 
         for iteration in range(self._iterations):
-            def _recursive_generate_and_evaluate_model(attempts=0, max_attempts=3):
+            def _recursive_generate_and_evaluate_model(attempts=0, max_attempts=5):
                 try:
                     return self._generate_and_evaluate_model(
                         system_prompt, user_prompt, fit_code
@@ -68,9 +68,9 @@ class ScientificGenerativeAgent():
         for idx, (_, top_k_code, _, top_k_loss_line) in enumerate(self._top_k_models):
             previous += (f"### Previous iteration #{            idx}:\n\n{top_k_code     }\n\n"
                          f"### Feedback on previous iteration #{idx}:\n\n{top_k_loss_line}\n\n")
-        user_prompt = previous + user_prompt
+        user_prompt = system_prompt + previous + user_prompt
         messages = [
-            {"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}
+            {"role": "user", "content": user_prompt}
         ]
         response = self._llm.chat(messages)
 
