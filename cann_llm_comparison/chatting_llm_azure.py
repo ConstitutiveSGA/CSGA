@@ -36,6 +36,10 @@ class ChattingLLMAzure():
         return response
 
 
+    def get_model(self):
+        return self._env["model"]
+
+
     def _load_env(self):
         dotenv.load_dotenv()
         return {
