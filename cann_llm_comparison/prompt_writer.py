@@ -269,6 +269,8 @@ class Physics(torch.nn.Module):
 4. Output the code in a single code block "‘‘‘python ... ‘‘‘" with detailed comments in the code block. Do not add any trailing comments before or after the code block. Start this section with "### Code".
 '''
 
+ # Hint: torch.symeig is deprecated. Use torch.linalg.eigvalsh instead. Second hint: torch.linalg.svd provides three, not two return values.
+
 
     def write_fit_code(self):
         match self._config["problem"]:
