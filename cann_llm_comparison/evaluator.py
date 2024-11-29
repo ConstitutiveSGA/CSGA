@@ -50,9 +50,9 @@ class Evaluator():
         train_pred["simple_shear"] = model.forward(train_data_x["simple_shear"]).detach()[:,0,1]
 
         train_loss                 = {}
-        train_loss["tens"]         = torch.nn.MSELoss()(train_pred["tens"]        , train_data_y["tens"]        .squeeze(1)).item()*20
-        train_loss["comp"]         = torch.nn.MSELoss()(train_pred["comp"]        , train_data_y["comp"]        .squeeze(1)).item()*20
-        train_loss["simple_shear"] = torch.nn.MSELoss()(train_pred["simple_shear"], train_data_y["simple_shear"].squeeze(1)).item()*20
+        train_loss["tens"]         = torch.nn.MSELoss()(train_pred["tens"]        , train_data_y["tens"]        .squeeze(1)).item()*400
+        train_loss["comp"]         = torch.nn.MSELoss()(train_pred["comp"]        , train_data_y["comp"]        .squeeze(1)).item()*400
+        train_loss["simple_shear"] = torch.nn.MSELoss()(train_pred["simple_shear"], train_data_y["simple_shear"].squeeze(1)).item()*400
 
         train_loss_line = (f"MSE [Tension]: {     train_loss['tens'        ]:.4f} / "
                            f"MSE [Compression]: { train_loss['comp'        ]:.4f} / "
