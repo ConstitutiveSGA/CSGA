@@ -1,15 +1,4 @@
-﻿"""
-Module for interacting with Azure's OpenAI language model.
-
-This module defines the ChattingLLMAzure class, which handles the setup and interaction
-with Azure's OpenAI language model to generate chat responses.
-
-Classes:
-    ChattingLLMAzure: A class to interact with Azure's OpenAI language model for generating chat
-                      responses.
-"""
-
-import os
+﻿import os
 import dotenv
 import tiktoken
 import azure.ai.inference
@@ -45,6 +34,10 @@ class ChattingLLMAzure():
         response = self._generate_response(messages)
         response = self._clean_response_from_special_chars(response)
         return response
+
+
+    def get_model(self):
+        return self._env["model"]
 
 
     def _load_env(self):

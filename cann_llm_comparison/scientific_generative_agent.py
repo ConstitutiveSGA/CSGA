@@ -53,7 +53,13 @@ class ScientificGenerativeAgent():
             self._save_model(model, model_code, loss, loss_line)
 
         model, model_code, _, _ = self._load_best_model()
-        self._exporter.export(self._loader, model, model_code)
+        self._exporter.export(
+            loader     = self._loader,
+            model      = model,
+            model_code = model_code,
+            prompts    = [system_prompt, user_prompt, fit_code],
+            llm        = self._llm.get_model()
+        )
 
 
     def _generate_and_evaluate_model(self, system_prompt, user_prompt, fit_code):

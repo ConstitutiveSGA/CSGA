@@ -16,24 +16,26 @@ class Exporter():
         self._create_output_dir()
 
 
-    def export(self, loader, model, model_code):
+    def export(self, loader, model, model_code, prompts, llm):
         match self._config["problem"]:
             case "synthetic_a":
-                self._export_synthetic_a(loader, model, model_code)
+                self._export_synthetic_a(loader, model, model_code, prompts, llm)
             case "synthetic_b":
-                self._export_synthetic_b(loader, model, model_code)
+                self._export_synthetic_b(loader, model, model_code, prompts, llm)
             case "brain":
-                self._export_brain(loader, model, model_code)
+                self._export_brain(loader, model, model_code, prompts, llm)
             case _:
                 raise ValueError("Invalid problem type.")
 
 
-    def _export_synthetic_a(self, loader, model, model_code):
+    def _export_synthetic_a(self, loader, model, model_code, prompts, llm):
         self._export_problem()
         self._export_model(
             model      = model,
             model_code = model_code
         )
+        self._export_prompts(prompts=prompts)
+        self._export_llm(llm=llm)
         self._export(
             loader         = loader,
             key            = "uni-x",
@@ -75,12 +77,14 @@ class Exporter():
         )
 
 
-    def _export_synthetic_b(self, loader, model, model_code):
+    def _export_synthetic_b(self, loader, model, model_code, prompts, llm):
         self._export_problem()
         self._export_model(
             model      = model,
             model_code = model_code
         )
+        self._export_prompts(prompts=prompts)
+        self._export_llm(llm=llm)
         self._export(
             loader         = loader,
             key            = "uni-x",
@@ -140,12 +144,14 @@ class Exporter():
         return train_data_x, test_data_x, train_data_y, test_data_y, train_predictions, test_predictions
 
 
-    def _export_brain(self, loader, model, model_code):
+    def _export_brain(self, loader, model, model_code, prompts, llm):
         self._export_problem()
         self._export_model(
             model      = model,
             model_code = model_code
         )
+        self._export_prompts(prompts=prompts)
+        self._export_llm(llm=llm)
         self._export(
             loader         = loader,
             key            = "tens",
@@ -284,6 +290,18 @@ class Exporter():
         with open(path, mode="w", encoding="utf-8") as file:
             for index, param in enumerate(model.params):
                 file.write(f"Parameter {index}: {param.item():.8f}\n")
+
+
+    def _export_prompts(self, prompts):
+        path = os.path.join(self._output_dir, "prompts.txt")
+        with open(path, mode="w", encoding="utf-8") as file:
+            [file.write(f"{prompt}\n\n") for prompt in prompts]
+    
+    
+    def _export_llm(self, llm):
+        path = os.path.join(self._output_dir, "llm.txt")
+        with open(path, mode="w", encoding="utf-8") as file:
+            file.write(llm)
 
 
     def _export_loss(self, file, key, train_mse, test_mse, r2):
