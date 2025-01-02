@@ -314,9 +314,9 @@ class Exporter():
     def _export_data(self, file, key, data_x, data_y, predictions):
         path = os.path.join(self._output_dir, f"{key}_{file}.csv")
         pandas.DataFrame({
-            "data_x":           data_x.numpy(),
-            "data_y":           data_y.numpy(),
-            "predictions": predictions.numpy()
+            "data_x":           data_x.detach().numpy(),
+            "data_y":           data_y.detach().numpy(),
+            "predictions": predictions.detach().numpy()
         }).to_csv(path_or_buf=path, index=False)
 
 
@@ -326,26 +326,26 @@ class Exporter():
         path = os.path.join(self._output_dir, f"{key}_{file}.png")
         matplotlib.pyplot.figure()
         matplotlib.pyplot.scatter(
-            x     = train_data_x.numpy(),
-            y     = train_data_y.numpy(),
+            x     = train_data_x.detach().numpy(),
+            y     = train_data_y.detach().numpy(),
             color = "deepskyblue",
             label = "Training data"
         )
         matplotlib.pyplot.scatter(
-            x     = train_data_x.numpy(),
-            y     = train_predictions.numpy(),
+            x     = train_data_x.detach().numpy(),
+            y     = train_predictions.detach().numpy(),
             color = "darkseagreen",
             label = "Training predictions"
         )
         matplotlib.pyplot.scatter(
-            x     = test_data_x.numpy(),
-            y     = test_data_y.numpy(),
+            x     = test_data_x.detach().numpy(),
+            y     = test_data_y.detach().numpy(),
             color = "aqua",
             label = "Test data"
         )
         matplotlib.pyplot.scatter(
-            x     = test_data_x.numpy(),
-            y     = test_predictions.numpy(),
+            x     = test_data_x.detach().numpy(),
+            y     = test_predictions.detach().numpy(),
             color = "lawngreen",
             label = "Test predictions"
         )

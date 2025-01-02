@@ -35,7 +35,7 @@ class ScientificGenerativeAgent():
         fit_code      = self._prompt_writer.write_fit_code()
 
         for iteration in range(self._iterations):
-            def _recursive_generate_and_evaluate_model(attempts=0, max_attempts=5):
+            def _recursive_generate_and_evaluate_model(attempts=0, max_attempts=10):
                 try:
                     return self._generate_and_evaluate_model(
                         system_prompt, user_prompt, fit_code
