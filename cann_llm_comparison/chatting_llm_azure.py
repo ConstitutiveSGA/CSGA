@@ -24,8 +24,9 @@ class ChattingLLMAzure():
                 "tokens_per_name":    1
         }
         self._client = azure.ai.inference.ChatCompletionsClient(
-            endpoint   = self._env["endpoint"],
-            credential = azure.core.credentials.AzureKeyCredential(self._env["key"]),
+            endpoint    = self._env["endpoint"],
+            api_version = self._env["api_version"],
+            credential  = azure.core.credentials.AzureKeyCredential(self._env["key"]),
         )
 
 
@@ -57,7 +58,8 @@ class ChattingLLMAzure():
                  "o1-preview":
                 return tiktoken.encoding_for_model(self._env["model"])
             case "Meta-Llama-3.1-70B-Instruct" | \
-                 "Meta-Llama-3.1-405B-Instruct":
+                 "Meta-Llama-3.1-405B-Instruct" | \
+                 "o1":
                 return tiktoken.get_encoding("cl100k_base")
             case _:
                 raise ValueError(f"Encoding for model {self._env['model']} unset!")
@@ -69,6 +71,7 @@ class ChattingLLMAzure():
                 return 16000
             case "gpt-4o"                      | \
                  "o1-preview"                  | \
+                 "o1"                          | \
                  "Meta-Llama-3.1-70B-Instruct" | \
                  "Meta-Llama-3.1-405B-Instruct":
                 return 128000
@@ -102,7 +105,8 @@ class ChattingLLMAzure():
                     max_tokens  = self._max_tokens,
                     model       = self._env["model"],
                 )
-            case "o1-preview":
+            case "o1-preview" | \
+                 "o1":
                 response_struct = self._client.complete(
                     messages    = messages,
                     model       = self._env["model"],
