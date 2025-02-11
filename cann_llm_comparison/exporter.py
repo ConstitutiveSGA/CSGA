@@ -296,8 +296,8 @@ class Exporter():
         path = os.path.join(self._output_dir, "prompts.txt")
         with open(path, mode="w", encoding="utf-8") as file:
             [file.write(f"{prompt}\n\n") for prompt in prompts]
-    
-    
+
+
     def _export_llm(self, llm):
         path = os.path.join(self._output_dir, "llm.txt")
         with open(path, mode="w", encoding="utf-8") as file:

@@ -55,19 +55,19 @@ class Loader():
             self._test_data_x[ "strip-x"],
             self._test_data_y[ "strip-x"]
         ) = self._split_synthetic(data=data["strip-x"], test_data_indices=[12,13,14])
-        
-        
+
+
     def _split_synthetic(self, data, test_data_indices):
         train_data_mask = numpy.ones( shape=(data[0].shape[0],), dtype=bool)
         test_data_mask  = numpy.zeros(shape=(data[0].shape[0],), dtype=bool)
         train_data_mask[test_data_indices] = False
         test_data_mask[ test_data_indices] = True
-        
+
         train_data_x = data[0][train_data_mask,:,:]
         train_data_y = data[1][train_data_mask,:,:]
         test_data_x  = data[0][test_data_mask, :,:]
         test_data_y  = data[1][test_data_mask, :,:]
-        
+
         return(
             torch.tensor(train_data_x, dtype=torch.float32),
             torch.tensor(train_data_y, dtype=torch.float32),

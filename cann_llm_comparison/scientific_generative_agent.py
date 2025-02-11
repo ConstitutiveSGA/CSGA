@@ -30,7 +30,7 @@ class ScientificGenerativeAgent():
 
 
     def run(self):
-        system_prompt = f"## Scenario:\n{self._prompt_writer.write_system_prompt()}\n"
+        system_prompt = self._prompt_writer.write_system_prompt()
         user_prompt   = self._prompt_writer.write_user_prompt(loader=self._loader)
         fit_code      = self._prompt_writer.write_fit_code()
 
@@ -68,11 +68,8 @@ class ScientificGenerativeAgent():
         for idx, (_, top_k_code, _, top_k_loss_line) in enumerate(self._top_k_models):
             previous += (f"### Previous iteration #{            idx}:\n\n{top_k_code     }\n\n"
                          f"### Feedback on previous iteration #{idx}:\n\n{top_k_loss_line}\n\n")
-        user_prompt = system_prompt + previous + user_prompt
-        messages = [
-            {"role": "user", "content": user_prompt}
-        ]
-        response = self._llm.chat(messages)
+        user_prompt = previous + user_prompt
+        response = self._llm.chat(system_prompt, user_prompt)
 
         # Execution of proposed code
         model_code = re.findall(r"```python(.*?)```", response, re.DOTALL)[0].strip()
