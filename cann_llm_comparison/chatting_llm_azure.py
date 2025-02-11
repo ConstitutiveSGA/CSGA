@@ -45,8 +45,8 @@ class ChattingLLMAzure():
     def _load_env(self):
         dotenv.load_dotenv()
         return {
-            "endpoint":    os.getenv("AZURE_ENDPOINT"),
-            "key":         os.getenv("AZURE_API_KEY"),
+            "endpoint": os.getenv("AZURE_ENDPOINT"),
+            "key":      os.getenv("AZURE_API_KEY"),
         }
 
 

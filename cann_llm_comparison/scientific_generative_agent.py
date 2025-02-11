@@ -6,17 +6,24 @@ import exporter
 import evaluator
 import prompt_writer
 import chatting_llm_azure
+import chatting_llm_huggingface
 
 
 class ScientificGenerativeAgent():
 
     def __init__(self, config):
         self._config        = config
-        self._llm           = chatting_llm_azure.ChattingLLMAzure()
         self._prompt_writer = prompt_writer.PromptWriter(config)
         self._loader        = loader.Loader(             config)
         self._evaluator     = evaluator.Evaluator(       config)
         self._exporter      = exporter.Exporter(         config)
+        match self._config["llm_platform"]:
+            case "azure":
+                self._llm = chatting_llm_azure.ChattingLLMAzure()
+            case "huggingface":
+                self._llm = chatting_llm_huggingface.ChattingLLMHuggingface()
+            case _:
+                raise ValueError("Invalid LLM platform.")
 
         self._iterations    = 5
         self._top_k         = 3

@@ -12,9 +12,10 @@ def main():
 
 def _set_config():
     return {
-        "input_dir":  os.path.join("..", "input"),
-        "output_dir": os.path.join("..", "output"),
-        "problem":    "synthetic_a",
+        "input_dir":    os.path.join("..", "input"),
+        "output_dir":   os.path.join("..", "output"),
+        "problem":      "synthetic_a",
+        "llm_platform": "azure",
     }
     # Available problem types:
     # - "synthetic_a"
