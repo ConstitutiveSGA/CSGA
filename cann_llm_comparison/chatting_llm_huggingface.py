@@ -6,17 +6,19 @@ import transformers
 class ChattingLLMHuggingface():
 
     def __init__(self):
-        self._model_name     = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
-        self._context_length = None
-        self._temperature    = 0.6
-        self._cache_dir      = os.path.join("..", "..", "cache")
-        self._device         = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._model          = None
-        self._tokenizer      = None
+        self._model_name        = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+        self._context_length    = None
+        self._max_output_length = None
+        self._temperature       = 0.6
+        self._cache_dir         = os.path.join("..", "..", "cache")
+        self._device            = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self._model             = None
+        self._tokenizer         = None
 
 
     def set_up(self):
-        self._context_length = self._select_context_length()
+        self._context_length    = self._select_context_length()
+        self._max_output_length = self._select_max_output_length()
 
         self._tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path = self._model_name,
@@ -57,6 +59,14 @@ class ChattingLLMHuggingface():
                 raise ValueError(f"Context length for model {self._model_name} unset!") 
 
 
+    def _select_max_output_length(self):
+        match self._model_name:
+            case "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B":
+                return 32768
+            case _:
+                raise ValueError(f"Max output length for model {self._model_name} unset!")
+
+
     def _assemble_messages(self, system_message, user_message):
         match self._model_name:
             case "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B":
@@ -79,7 +89,7 @@ class ChattingLLMHuggingface():
 
 
     def _check_chat_length(self, messages):
-        if messages.data["input_ids"].shape[1] + 32768 > self._context_length:
+        if messages.data["input_ids"].shape[1] + self._max_output_length > self._context_length:
             raise ValueError("Chat is too long, would exceed the context window!")
 
 
@@ -87,7 +97,7 @@ class ChattingLLMHuggingface():
         response = self._model.generate(
             input_ids      = messages.data["input_ids"],
             attention_mask = messages.data["attention_mask"],
-            max_new_tokens = 32768,
+            max_new_tokens = self._max_output_length,
             pad_token_id   = self._tokenizer.pad_token_id
         )
         return self._tokenizer.decode(response[0])
