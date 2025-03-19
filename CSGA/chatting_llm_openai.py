@@ -8,7 +8,7 @@ class ChattingLLMOpenAI():
 
     def __init__(self, platform):
         self._platform          = platform
-        self._model             = "deepseek/deepseek-r1"
+        self._model             = "gpt-4o"
         self._temperature       = 0.6
         self._max_output_length = None
         self._env               = None

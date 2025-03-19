@@ -9,7 +9,7 @@ import chatting_llm_openai
 import chatting_llm_huggingface
 
 
-class ScientificGenerativeAgent():
+class ConstitutiveScientificGenerativeAgent():
 
     def __init__(self, config):
         self._config        = config
