@@ -5,18 +5,26 @@ import loader
 import exporter
 import evaluator
 import prompt_writer
-import chatting_llm_azure
+import chatting_llm_openai
+import chatting_llm_huggingface
 
 
 class ScientificGenerativeAgent():
 
     def __init__(self, config):
         self._config        = config
-        self._llm           = chatting_llm_azure.ChattingLLMAzure()
         self._prompt_writer = prompt_writer.PromptWriter(config)
         self._loader        = loader.Loader(             config)
         self._evaluator     = evaluator.Evaluator(       config)
         self._exporter      = exporter.Exporter(         config)
+        match self._config["llm_platform"]:
+            case "azure" | \
+                 "openrouter":
+                self._llm = chatting_llm_openai.ChattingLLMOpenAI(self._config["llm_platform"])
+            case "huggingface":
+                self._llm = chatting_llm_huggingface.ChattingLLMHuggingface()
+            case _:
+                raise ValueError("Invalid LLM platform.")
 
         self._iterations    = 5
         self._top_k         = 3
@@ -35,7 +43,7 @@ class ScientificGenerativeAgent():
         fit_code      = self._prompt_writer.write_fit_code()
 
         for iteration in range(self._iterations):
-            def _recursive_generate_and_evaluate_model(attempts=0, max_attempts=3):
+            def _recursive_generate_and_evaluate_model(attempts=0, max_attempts=10):
                 try:
                     return self._generate_and_evaluate_model(
                         system_prompt, user_prompt, fit_code
@@ -69,10 +77,7 @@ class ScientificGenerativeAgent():
             previous += (f"### Previous iteration #{            idx}:\n\n{top_k_code     }\n\n"
                          f"### Feedback on previous iteration #{idx}:\n\n{top_k_loss_line}\n\n")
         user_prompt = previous + user_prompt
-        messages = [
-            {"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}
-        ]
-        response = self._llm.chat(messages)
+        response = self._llm.chat(system_prompt, user_prompt)
 
         # Execution of proposed code
         model_code = re.findall(r"```python(.*?)```", response, re.DOTALL)[0].strip()
