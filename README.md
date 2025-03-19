@@ -1,3 +1,3 @@
 # Constitutive scientific generative agent (CSGA)
 
-The CANN architecture was developed and tested with Python 3.12.7.
+The CSGA approach was developed and tested with Python 3.12.7.
