@@ -21,6 +21,10 @@ def _set_config():
     # - "synthetic_a"
     # - "synthetic_b"
     # - "brain"
+    # Available LLM platforms:
+    # - "azure"
+    # - "openrouter"
+    # - "huggingface"
 
 
 if __name__ == "__main__":
