@@ -267,8 +267,8 @@ class Exporter():
         test_data_x       = loader.get_test_data_x( )[key]
         train_data_y      = loader.get_train_data_y()[key]
         test_data_y       = loader.get_test_data_y( )[key]
-        train_predictions = model.forward(train_data_x).detach()
-        test_predictions  = model.forward(test_data_x ).detach()
+        train_predictions = model.forward(train_data_x).detach().reshape((-1,))
+        test_predictions  = model.forward(test_data_x ).detach().reshape((-1,))
 
         return train_data_x, test_data_x, train_data_y, test_data_y, train_predictions, test_predictions
 
