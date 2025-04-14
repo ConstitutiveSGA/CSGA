@@ -39,7 +39,7 @@ class ConstitutiveScientificGenerativeAgent():
 
     def run(self):
         system_prompt = self._prompt_writer.write_system_prompt()
-        user_prompt   = self._prompt_writer.write_user_prompt()
+        user_prompt   = self._prompt_writer.write_user_prompt(self._loader)
         fit_code      = self._prompt_writer.write_fit_code()
 
         for iteration in range(self._iterations):

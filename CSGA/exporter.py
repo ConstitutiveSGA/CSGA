@@ -24,6 +24,8 @@ class Exporter():
                 self._export_synthetic_b(loader, model, model_code, prompts, llm)
             case "brain":
                 self._export_brain(loader, model, model_code, prompts, llm)
+            case "treloar":
+                self._export_treloar(loader, model, model_code, prompts, llm)
             case _:
                 raise ValueError("Invalid problem type.")
 
@@ -207,6 +209,66 @@ class Exporter():
         test_data_y       =  test_data_y.squeeze(1)
         train_predictions = train_predictions[:, stress_slc_idx[0], stress_slc_idx[1]]
         test_predictions  =  test_predictions[:, stress_slc_idx[0], stress_slc_idx[1]]
+
+        return train_data_x, test_data_x, train_data_y, test_data_y, train_predictions, test_predictions
+
+
+    def _export_treloar(self, loader, model, model_code, prompts, llm):
+        self._export_problem()
+        self._export_model(
+            model      = model,
+            model_code = model_code
+        )
+        self._export_prompts(prompts=prompts)
+        self._export_llm(llm=llm)
+        self._export(
+            loader         = loader,
+            key            = "uni-x",
+            model          = model,
+            prepare_data   = self._prepare_treloar_data_for_export,
+            strain_slc_idx = [0,0], # extract epsilon_1_1
+            stress_slc_idx = [0,0], # extract   sigma_1_1
+            xlabel         = "Stretch [F_11]",
+            ylabel         = "Stress [P_11]",
+            inverted_x     = False,
+            inverted_y     = False,
+            title          = "Treloar Data [A] Uniaxial Tension"
+        )
+        self._export(
+            loader         = loader,
+            key            = "equi",
+            model          = model,
+            prepare_data   = self._prepare_treloar_data_for_export,
+            strain_slc_idx = [0,0], # extract epsilon_1_1
+            stress_slc_idx = [0,0], # extract   sigma_1_1
+            xlabel         = "Stretch [F_11]",
+            ylabel         = "Stress [P_11]",
+            inverted_x     = False,
+            inverted_y     = False,
+            title          = "Treloar Data [A] Equibiaxial Tension"
+        )
+        self._export(
+            loader         = loader,
+            key            = "strip-x",
+            model          = model,
+            prepare_data   = self._prepare_treloar_data_for_export,
+            strain_slc_idx = [0,0], # extract epsilon_1_1
+            stress_slc_idx = [0,0], # extract   sigma_1_1
+            xlabel         = "Stretch [F_11]",
+            ylabel         = "Stress [P_11]",
+            inverted_x     = False,
+            inverted_y     = False,
+            title          = "Treloar Data [A] Strip-biaxial Tension"
+        )
+
+
+    def _prepare_treloar_data_for_export(self, loader, key, model, strain_slc_idx, stress_slc_idx):
+        train_data_x      = loader.get_train_data_x()[key]
+        test_data_x       = loader.get_test_data_x( )[key]
+        train_data_y      = loader.get_train_data_y()[key]
+        test_data_y       = loader.get_test_data_y( )[key]
+        train_predictions = model.forward(train_data_x).detach()
+        test_predictions  = model.forward(test_data_x ).detach()
 
         return train_data_x, test_data_x, train_data_y, test_data_y, train_predictions, test_predictions
 

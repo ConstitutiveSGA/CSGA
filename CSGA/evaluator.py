@@ -13,6 +13,8 @@ class Evaluator():
                 return self._evaluate_synthetic(iteration, loader, model)
             case "brain":
                 return self._evaluate_brain(iteration, loader, model)
+            case "treloar":
+                return self._evaluate_treloar(iteration, loader, model)
             case _:
                 raise ValueError("Invalid problem type.")
 
@@ -57,6 +59,29 @@ class Evaluator():
         train_loss_line = (f"MSE [Tension]: {     train_loss['tens'        ]:.4f} / "
                            f"MSE [Compression]: { train_loss['comp'        ]:.4f} / "
                            f"MSE [Simple Shear]: {train_loss['simple_shear']:.4f}")
+
+        print(f"Iteration {iteration}: {train_loss_line}")
+
+        return sum(train_loss.values()) / len(train_loss), train_loss_line
+
+
+    def _evaluate_treloar(self, iteration, loader, model):
+        train_data_x = loader.get_train_data_x()
+        train_data_y = loader.get_train_data_y()
+
+        train_pred            = {}
+        train_pred["uni-x"]   = model.forward(train_data_x["uni-x"  ]).detach()
+        train_pred["equi"]    = model.forward(train_data_x["equi"   ]).detach()
+        train_pred["strip-x"] = model.forward(train_data_x["strip-x"]).detach()
+
+        train_loss            = {}
+        train_loss["uni-x"]   = torch.nn.MSELoss()(train_pred["uni-x"]  , train_data_y["uni-x"]  ).item()*20
+        train_loss["equi"]    = torch.nn.MSELoss()(train_pred["equi"]   , train_data_y["equi"]   ).item()*20
+        train_loss["strip-x"] = torch.nn.MSELoss()(train_pred["strip-x"], train_data_y["strip-x"]).item()*20
+
+        train_loss_line = (f"MSE [Uniaxial Tension]: {     train_loss['uni-x'  ]:.4f} / "
+                           f"MSE [Biaxial Tension]: {      train_loss['equi'   ]:.4f} / "
+                           f"MSE [Strip-Biaxial Tension]: {train_loss['strip-x']:.4f}")
 
         print(f"Iteration {iteration}: {train_loss_line}")
 

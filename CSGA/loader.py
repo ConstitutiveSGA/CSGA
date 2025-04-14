@@ -133,8 +133,8 @@ class Loader():
             self._train_data_y["uni-x"],
             self._test_data_x[ "uni-x"],
             self._test_data_y[ "uni-x"]
-        ) = self._split_treloar(data = [data["train_ut_lam"].reshape((-1,1)),
-                                        data["train_ut_P11"].reshape((-1,1))],
+        ) = self._split_treloar(data = [data["train_ut_lam"].reshape((-1,)),
+                                        data["train_ut_P11"].reshape((-1,))],
                    test_data_indices = [1,2,10]
         )
         (
@@ -142,8 +142,8 @@ class Loader():
             self._train_data_y["equi"],
             self._test_data_x[ "equi"],
             self._test_data_y[ "equi"]
-        ) = self._split_treloar(data = [data["train_bt_lam"].reshape((-1,1)),
-                                        data["train_bt_P11"].reshape((-1,1))],
+        ) = self._split_treloar(data = [data["train_bt_lam"].reshape((-1,)),
+                                        data["train_bt_P11"].reshape((-1,))],
                    test_data_indices = [2,10]
         )
         (
@@ -151,8 +151,8 @@ class Loader():
             self._train_data_y["strip-x"],
             self._test_data_x[ "strip-x"],
             self._test_data_y[ "strip-x"]
-        ) = self._split_treloar(data = [data["train_ps_lam"].reshape((-1,1)),
-                                        data["train_ps_P11"].reshape((-1,1))],
+        ) = self._split_treloar(data = [data["train_ps_lam"].reshape((-1,)),
+                                        data["train_ps_P11"].reshape((-1,))],
                    test_data_indices = [5,7,8,9]
         )
         
