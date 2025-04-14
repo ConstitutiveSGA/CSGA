@@ -15,18 +15,39 @@ You are very familiar with Python and PyTorch. Do not use any external libraries
 '''
 
 
-    def write_user_prompt(self):
+    def write_user_prompt(self, loader):
         match self._config["problem"]:
-            case "synthetic_a" | "brain" :
-                return self._write_synthetic_a_and_brain_user_prompt()
+            case "synthetic_a":
+                return self._write_synthetic_a_user_prompt(loader)
             case "synthetic_b":
-                return self._write_synthetic_b_user_prompt()
+                return self._write_synthetic_b_user_prompt(loader)
+            case "brain":
+                return self._write_brain_user_prompt(      loader)
+            case "treloar":
+                return self._write_treloar_user_prompt(    loader)
             case _:
                 raise ValueError("Invalid problem type.")
 
 
-    def _write_synthetic_a_and_brain_user_prompt(self):
-        return '''
+    def _write_synthetic_a_user_prompt(self, loader):
+        return f'''
+## Task Requirements
+1. Your task is to model the constitutive behavior of a material: in each iteration, implement a PyTorch module that computes the First Piola-Kirchhoff stress tensor P from the deformation gradient tensor F.
+2. The material is isotropic and incompressible. Feel free to experiment with different and even non physical constitutive models. The constitutive behavior searched for is non-linear.
+
+
+## Constitutive behavior to be captured:
+### Uniaxial Tension:
+Deformation Gradient Tensor [component 1,1], First Piola-Kirchhoff Stress Tensor [component 1,1]
+{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["uni-x"][:,0,0], loader.get_train_data_y()["uni-x"][:,0,0]))}
+### Equibiaxial Tension:
+Deformation Gradient Tensor [component 1,1], First Piola-Kirchhoff Stress Tensor [component 1,1]
+{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["equi"][:,0,0], loader.get_train_data_y()["equi"][:,0,0]))}
+### Strip-Biaxial Tension:
+Deformation Gradient Tensor [component 1,1], First Piola-Kirchhoff Stress Tensor [component 1,1]
+{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["strip-x"][:,0,0], loader.get_train_data_y()["strip-x"][:,0,0]))}
+
+
 ## Format Requirements
 
 ### PyTorch Tips
@@ -90,8 +111,29 @@ class Physics(torch.nn.Module):
 '''
 
 
-    def _write_synthetic_b_user_prompt(self):
-        return '''
+    def _write_synthetic_b_user_prompt(self, loader):
+        raise ValueError("Synthetic B is not implemented yet.")
+
+
+    def _write_brain_user_prompt(self, loader):
+        return f'''
+## Task Requirements
+1. Your task is to model the constitutive behavior of a material: in each iteration, implement a PyTorch module that computes the First Piola-Kirchhoff stress tensor P from the deformation gradient tensor F.
+2. The material is isotropic and incompressible. Feel free to experiment with different and even non physical constitutive models. The constitutive behavior searched for is non-linear.
+
+
+## Constitutive behavior to be captured:
+### Tension:
+Deformation Gradient Tensor [component 1,1], First Piola-Kirchhoff Stress Tensor [component 1,1]
+{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["tens"][:,0,0], loader.get_train_data_y()["tens"].squeeze(1)))}
+### Compression:
+Deformation Gradient Tensor [component 1,1], First Piola-Kirchhoff Stress Tensor [component 1,1]
+{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["comp"][:,0,0], loader.get_train_data_y()["comp"].squeeze(1)))}
+### Simple Shear:
+Deformation Gradient Tensor [component 1,2], First Piola-Kirchhoff Stress Tensor [component 1,2]
+{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["simple_shear"][:,0,1], loader.get_train_data_y()["simple_shear"].squeeze(1)))}
+
+
 ## Format Requirements
 
 ### PyTorch Tips
@@ -104,7 +146,7 @@ class Physics(torch.nn.Module):
 2. Annotate the size of the tensor as comment after each tensor operation. For example, ‘# (B, 3, 3)‘.
 3. The only library allowed is PyTorch. Follow the examples provided by the user and check the PyTorch documentation to learn how to use PyTorch.
 4. Separate the code into continuous physical parameters that can be tuned with differentiable optimization and the symbolic constitutive law represented by PyTorch code. Define them respectively in the ‘__init__‘ function and the ‘forward‘ function. Keep the continuous physical parameters in the list ‘self.params‘.
-5. The output of the ‘forward‘ function is the Second Piola-Kirchhoff stress tensor S.
+5. The output of the ‘forward‘ function is the First Piola-Kirchhoff stress tensor P.
 6. The proposed code should strictly follow the structure and function signatures below:
 
 ```python
@@ -132,26 +174,32 @@ class Physics(torch.nn.Module):
         ]      
        
 
-    def forward(self, RCG: torch.Tensor) -> torch.Tensor:
+    def forward(self, F: torch.Tensor) -> torch.Tensor:
         """
-        Compute Second Piola Kirchhoff stress tensor from Right Cauchy-Green Deformation Tensor.
+        Compute First Piola Kirchhoff stress tensor from deformation gradient tensor.
 
         Args:
-            RCG (torch.Tensor): Right Cauchy-Green Deformation Tensor (B, 3, 3).
+            F (torch.Tensor): deformation gradient tensor (B, 3, 3).
 
         Returns:
-            second_piola_kirchhoff_stress (torch.Tensor): Second Piola Kirchhoff stress tensor (B, 3, 3).
+            first_piola_kirchhoff_stress (torch.Tensor): First Piola Kirchhoff stress tensor (B, 3, 3).
         """
-        return second_piola_kirchhoff_stress
+        return first_piola_kirchhoff_stress
 ```
 
 ### Solution Requirements
 
 1. Try to model the constitutive behavior with principal stretches. This appears to be the most promising approach.
-2. Analyze step-by-step what the potential problem is in the previous iterations based on the feedback. Think about why the results from previous constitutive laws mismatched with the ground truth. Do not give advice about how to optimize. Focus on the formulation of the constitutive law. Start this section with "### Analysis". Analyze all iterations individually, and start the subsection for each iteration with "#### Iteration N", where N stands for the index. Remember to analyze every iteration in the history.
-3. Think step-by-step what you need to do in this iteration. Think about how to separate your algorithm into a continuous physical parameter part and a symbolic constitutive law part. Describe your plan in pseudo-code, written out in great detail. Remember to update the default values of the trainable physical parameters based on previous optimizations. Start this section with "### Step-by-Step Plan".
-4. Output the code in a single code block "‘‘‘python ... ‘‘‘" with detailed comments in the code block. Do not add any trailing comments before or after the code block. Start this section with "### Code".
+2. When there is no strain, indicated by a deformation gradient value of 1, the first Piola-Kirchhoff stress tensor must be zero.
+3. Analyze step-by-step what the potential problem is in the previous iterations based on the feedback. Think about why the results from previous constitutive laws mismatched with the ground truth. Do not give advice about how to optimize. Focus on the formulation of the constitutive law. Start this section with "### Analysis". Analyze all iterations individually, and start the subsection for each iteration with "#### Iteration N", where N stands for the index. Remember to analyze every iteration in the history.
+4. Think step-by-step what you need to do in this iteration. Think about how to separate your algorithm into a continuous physical parameter part and a symbolic constitutive law part. Describe your plan in pseudo-code, written out in great detail. Remember to update the default values of the trainable physical parameters based on previous optimizations. Start this section with "### Step-by-Step Plan".
+5. Output the code in a single code block "‘‘‘python ... ‘‘‘" with detailed comments in the code block. Do not add any trailing comments before or after the code block. Start this section with "### Code".
 '''
+
+# Hint: torch.symeig is deprecated. Use torch.linalg.eigvalsh instead. Second hint: torch.linalg.svd provides three, not two return values.
+
+    def _write_treloar_user_prompt(self, loader):
+        pass
 
 
     def write_fit_code(self):
@@ -245,3 +293,7 @@ class Physics(torch.nn.Module):
             else:
                 scheduler.step(loss)
 '''
+
+
+    def _write_treloar_fit_code(self):
+        pass
