@@ -14,13 +14,14 @@ def _set_config():
     return {
         "input_dir":    os.path.join("input"),
         "output_dir":   os.path.join("output"),
-        "problem":      "synthetic_a",
+        "problem":      "treloar",
         "llm_platform": "azure",
     }
     # Available problem types:
     # - "synthetic_a"
     # - "synthetic_b"
     # - "brain"
+    # - "treloar"
     # Available LLM platforms:
     # - "azure"
     # - "openrouter"
