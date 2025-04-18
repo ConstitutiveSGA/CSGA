@@ -2,6 +2,8 @@
 import dotenv
 import openai
 import tiktoken
+import azure.ai.inference
+import azure.core.credentials
 
 
 class ChattingLLMOpenAI():
@@ -18,7 +20,7 @@ class ChattingLLMOpenAI():
 
     def set_up(self):
         self._tokenization = {
-                "context_length":     self._select_context_length(), 
+                "context_length":     self._select_context_length(),
                 "encoding":           tiktoken.get_encoding("cl100k_base"),
                 "tokens_per_message": 3,
                 "tokens_per_name":    1
@@ -32,15 +34,38 @@ class ChattingLLMOpenAI():
                 self._set_up_openrouter_client()
             case _:
                 raise ValueError("Invalid LLM platform.")
-        
+
 
     def _set_up_azure_client(self):
+        match self._model:
+            case "gpt-35-turbo-16k" | \
+                 "gpt-4o"           | \
+                 "o1-preview"       | \
+                 "o1"               | \
+                 "o3-mini":
+                self._set_up_azure_openai_client()
+            case "Meta-Llama-3.1-70B-Instruct"  | \
+                 "Meta-Llama-3.1-405B-Instruct" | \
+                 "DeepSeek-R1":
+                self._set_up_azure_opensource_client()
+            case _:
+                raise ValueError(f"Client for model {self._model} unset!")
+
+
+    def _set_up_azure_openai_client(self):
         self._env    = self._load_env()
         self._client = openai.AzureOpenAI(
-            azure_endpoint = self._env["azure_endpoint"],
+            azure_endpoint = self._env["azure_openai_endpoint"],
             api_version    = self._select_api_version(),
             api_key        = self._env["azure_key"],
+        )
 
+
+    def _set_up_azure_opensource_client(self):
+        self._env    = self._load_env()
+        self._client = azure.ai.inference.ChatCompletionsClient(
+            endpoint   = self._env["azure_servies_endpoint"],
+            credential = azure.core.credentials.AzureKeyCredential(self._env["azure_key"])
         )
 
 
@@ -67,19 +92,18 @@ class ChattingLLMOpenAI():
     def _load_env(self):
         dotenv.load_dotenv()
         return {
-            "azure_endpoint":      os.getenv("AZURE_ENDPOINT"),
-            "azure_key":           os.getenv("AZURE_API_KEY"),
-            "openrouter_endpoint": os.getenv("OPENROUTER_ENDPOINT"),
-            "openrouter_key":      os.getenv("OPENROUTER_API_KEY"),
+            "azure_openai_endpoint":  os.getenv("AZURE_OPENAI_ENDPOINT"),
+            "azure_servies_endpoint": os.getenv("AZURE_SERVICES_ENDPOINT"),
+            "azure_key":              os.getenv("AZURE_API_KEY"),
+            "openrouter_endpoint":    os.getenv("OPENROUTER_ENDPOINT"),
+            "openrouter_key":         os.getenv("OPENROUTER_API_KEY"),
         }
 
 
     def _select_api_version(self):
         match self._model:
-            case "gpt-35-turbo-16k"            | \
-                 "gpt-4o"                      | \
-                 "Meta-Llama-3.1-70B-Instruct" | \
-                 "Meta-Llama-3.1-405B-Instruct":
+            case "gpt-35-turbo-16k" | \
+                 "gpt-4o":
                 return "2024-05-01-preview"
             case "o1-preview" | \
                  "o1"         | \
@@ -98,10 +122,8 @@ class ChattingLLMOpenAI():
                  "o1"                           | \
                  "Meta-Llama-3.1-70B-Instruct"  | \
                  "Meta-Llama-3.1-405B-Instruct" | \
-                 "deepseek/deepseek-r1":
+                 "DeepSeek-R1":
                 return 128000
-            case "deepseek/deepseek-r1-distill-qwen-32b":
-                return 131072
             case "o3-mini":
                 return 200000
             case _:
@@ -117,8 +139,7 @@ class ChattingLLMOpenAI():
                 return 4096
             case "o1-preview"           | \
                  "o1"                   | \
-                 "deepseek/deepseek-r1" | \
-                 "deepseek/deepseek-r1-distill-qwen-32b":
+                 "DeepSeek-R1":
                 return 32768
             case "o3-mini":
                 return 100000
@@ -140,8 +161,24 @@ class ChattingLLMOpenAI():
 
 
     def _count_tokens_in_azure_format(self, messages):
+        match self._model:
+            case "gpt-35-turbo-16k" | \
+                 "gpt-4o"           | \
+                 "o1-preview"       | \
+                 "o1"               | \
+                 "o3-mini":
+                return self._count_tokens_in_azure_openai_format(messages)
+            case "Meta-Llama-3.1-70B-Instruct"  | \
+                 "Meta-Llama-3.1-405B-Instruct" | \
+                 "DeepSeek-R1":
+                return self._count_tokens_in_azure_opensource_format(messages)
+            case _:
+                raise ValueError(f"Count tokens function for model {self._model} unset!")
+
+
+    def _count_tokens_in_azure_openai_format(self, messages):
         input_tokens = 0
-        
+
         for message in messages:
             input_tokens += self._tokenization["tokens_per_message"]
             input_tokens += len(self._tokenization["encoding"].encode(message["role"]))
@@ -153,14 +190,27 @@ class ChattingLLMOpenAI():
         return input_tokens
 
 
+    def _count_tokens_in_azure_opensource_format(self, messages):
+        input_tokens = 0
+
+        for message in messages:
+            input_tokens += self._tokenization["tokens_per_message"]
+            input_tokens += len(self._tokenization["encoding"].encode(message["role"   ]))
+            input_tokens += len(self._tokenization["encoding"].encode(message["content"]))
+
+        input_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+
+        return input_tokens
+
+
     def _count_tokens_in_openrouter_format(self, messages):
         input_tokens = 0
-        
+
         for message in messages:
             input_tokens += self._tokenization["tokens_per_message"]
             for value in message.values():
                 input_tokens += len(self._tokenization["encoding"].encode(value))
-        
+
         input_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
 
         return input_tokens
@@ -168,10 +218,8 @@ class ChattingLLMOpenAI():
 
     def _assemble_messages(self, system_message, user_message):
         match self._model:
-            case "gpt-35-turbo-16k"             | \
-                 "gpt-4o"                       | \
-                 "Meta-Llama-3.1-70B-Instruct"  | \
-                 "Meta-Llama-3.1-405B-Instruct":
+            case "gpt-35-turbo-16k" | \
+                 "gpt-4o":
                 return [
                     {"role": "system", "content": [{"type": "text", "text": system_message}]},
                     {"role": "user",   "content": [{"type": "text", "text": user_message}]},
@@ -186,10 +234,15 @@ class ChattingLLMOpenAI():
                     {"role": "developer", "content": [{"type": "text", "text": system_message}]},
                     {"role": "user",      "content": [{"type": "text", "text": user_message}]},
                 ]
-            case "deepseek/deepseek-r1" | \
-                 "deepseek/deepseek-r1-distill-qwen-32b":
+            case "Meta-Llama-3.1-70B-Instruct"  | \
+                 "Meta-Llama-3.1-405B-Instruct":
                 return [
-                    {"role": "user", "content": f"## Scenario:\n{system_message}\n" + user_message},
+                    azure.ai.inference.models.SystemMessage(content=system_message),
+                    azure.ai.inference.models.UserMessage(  content=user_message)
+                ]
+            case "DeepSeek-R1":
+                return [
+                    azure.ai.inference.models.UserMessage(content=f"## Scenario:\n{system_message}\n" + user_message)
                 ]
             case _:
                 raise ValueError(f"Assembly of messages for model {self._model} unset!")
@@ -198,11 +251,7 @@ class ChattingLLMOpenAI():
     def _generate_response(self, messages):
         match self._model:
             case "gpt-35-turbo-16k"             | \
-                 "gpt-4o"                       | \
-                 "Meta-Llama-3.1-70B-Instruct"  | \
-                 "Meta-Llama-3.1-405B-Instruct" | \
-                 "deepseek/deepseek-r1"         | \
-                 "deepseek/deepseek-r1-distill-qwen-32b":
+                 "gpt-4o":
                 completion = self._client.chat.completions.create(
                     model       = self._model,
                     messages    = messages,
@@ -222,6 +271,15 @@ class ChattingLLMOpenAI():
                     messages              = messages,
                     max_completion_tokens = self._max_output_length,
                     reasoning_effort      = "high",
+                )
+            case "Meta-Llama-3.1-70B-Instruct"  | \
+                 "Meta-Llama-3.1-405B-Instruct" | \
+                 "DeepSeek-R1":
+                completion = self._client.complete(
+                    model       = self._model,
+                    messages    = messages,
+                    max_tokens  = self._max_output_length,
+                    temperature = self._temperature,
                 )
             case _:
                 raise ValueError(f"Response for model {self._model} unset!")
