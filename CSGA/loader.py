@@ -133,7 +133,7 @@ class Loader():
             self._train_data_y["uni-x"],
             self._test_data_x[ "uni-x"],
             self._test_data_y[ "uni-x"]
-        ) = self._split_treloar(data = [data["train_ut_lam"].reshape((-1,)),
+        ) = self._split_treloar(data = [self._expand_treloar_ut(data["train_ut_lam"]),
                                         data["train_ut_P11"].reshape((-1,))],
                    test_data_indices = [1,2,10]
         )
@@ -142,7 +142,7 @@ class Loader():
             self._train_data_y["equi"],
             self._test_data_x[ "equi"],
             self._test_data_y[ "equi"]
-        ) = self._split_treloar(data = [data["train_bt_lam"].reshape((-1,)),
+        ) = self._split_treloar(data = [self._expand_treloar_ebt(data["train_bt_lam"]),
                                         data["train_bt_P11"].reshape((-1,))],
                    test_data_indices = [2,10]
         )
@@ -151,11 +151,38 @@ class Loader():
             self._train_data_y["strip-x"],
             self._test_data_x[ "strip-x"],
             self._test_data_y[ "strip-x"]
-        ) = self._split_treloar(data = [data["train_ps_lam"].reshape((-1,)),
+        ) = self._split_treloar(data = [self._expand_treloar_ps(data["train_ps_lam"]),
                                         data["train_ps_P11"].reshape((-1,))],
                    test_data_indices = [5,7,8,9]
         )
-        
+
+
+    def _expand_treloar_ut(self, l):
+        l = l.reshape((-1,))
+        F = numpy.zeros((l.shape[0], 3, 3))
+        F[:,0,0] = l
+        F[:,1,1] = 1/numpy.sqrt(l)
+        F[:,2,2] = 1/numpy.sqrt(l)
+        return F
+
+
+    def _expand_treloar_ebt(self, l):
+        l = l.reshape((-1,))
+        F = numpy.zeros((l.shape[0], 3, 3))
+        F[:,0,0] = l
+        F[:,1,1] = l
+        F[:,2,2] = 1/numpy.square(l)
+        return F
+
+
+    def _expand_treloar_ps(self, l):
+        l = l.reshape((-1,))
+        F = numpy.zeros((l.shape[0], 3, 3))
+        F[:,0,0] = l
+        F[:,1,1] = 1
+        F[:,2,2] = 1/l
+        return F
+
 
     def _split_treloar(self, data, test_data_indices):
         train_data_mask = numpy.ones( shape=(data[0].shape[0],), dtype=bool)
@@ -163,9 +190,9 @@ class Loader():
         train_data_mask[test_data_indices] = False
         test_data_mask[ test_data_indices] = True
 
-        train_data_x = data[0][train_data_mask]
+        train_data_x = data[0][train_data_mask,:,:]
         train_data_y = data[1][train_data_mask]
-        test_data_x  = data[0][ test_data_mask]
+        test_data_x  = data[0][ test_data_mask,:,:]
         test_data_y  = data[1][ test_data_mask]
 
         return(

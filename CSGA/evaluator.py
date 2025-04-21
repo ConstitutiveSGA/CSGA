@@ -70,9 +70,9 @@ class Evaluator():
         train_data_y = loader.get_train_data_y()
 
         train_pred            = {}
-        train_pred["uni-x"]   = model.forward(train_data_x["uni-x"  ]).detach().reshape((-1,))
-        train_pred["equi"]    = model.forward(train_data_x["equi"   ]).detach().reshape((-1,))
-        train_pred["strip-x"] = model.forward(train_data_x["strip-x"]).detach().reshape((-1,))
+        train_pred["uni-x"]   = model.forward(train_data_x["uni-x"  ]).detach()[:,0,0]
+        train_pred["equi"]    = model.forward(train_data_x["equi"   ]).detach()[:,0,0]
+        train_pred["strip-x"] = model.forward(train_data_x["strip-x"]).detach()[:,0,0]
 
         train_loss            = {}
         train_loss["uni-x"]   = torch.nn.MSELoss()(train_pred["uni-x"]  , train_data_y["uni-x"]  ).item()*20

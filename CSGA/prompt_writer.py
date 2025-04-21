@@ -208,19 +208,25 @@ class Physics(torch.nn.Module):
 ## Constitutive behavior to be captured:
 ### Uniaxial Tension:
 Deformation Gradient Tensor [component 1,1], First Piola-Kirchhoff Stress Tensor [component 1,1]
-{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["uni-x"], loader.get_train_data_y()["uni-x"]))}
+{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["uni-x"][:,0,0], loader.get_train_data_y()["uni-x"]))}
 ### Equibiaxial Tension:
 Deformation Gradient Tensor [component 1,1], First Piola-Kirchhoff Stress Tensor [component 1,1]
-{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["equi"], loader.get_train_data_y()["equi"]))}
+{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["equi"][:,0,0], loader.get_train_data_y()["equi"]))}
 ### Strip-Biaxial Tension:
 Deformation Gradient Tensor [component 1,1], First Piola-Kirchhoff Stress Tensor [component 1,1]
-{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["strip-x"], loader.get_train_data_y()["strip-x"]))}
+{"\n".join(f"{x:.4f},{y:.4f}" for x, y in zip(loader.get_train_data_x()["strip-x"][:,0,0], loader.get_train_data_y()["strip-x"]))}
 
+
+## Format Requirements
+
+### PyTorch Tips
+1. When element-wise multiplying two matrix, make sure their number of dimensions match before the operation. For example, when multiplying ‘J‘ (B,) and ‘I‘ (B, 3, 3), you should do ‘J.view(-1, 1, 1)‘ before the operation. Similarly, ‘(J - 1)‘ should also be reshaped to ‘(J - 1).view(-1, 1, 1)‘. If you are not sure, write down every component in the expression one by one and annotate its dimension in the comment for verification.
+2. When computing the trace of a tensor A (B, 3, 3), use ‘A.diagonal(dim1=1, dim2=2).sum(dim=1).view(-1, 1, 1)‘. Avoid using ‘torch.trace‘ or ‘Tensor.trace‘ since they only support 2D matrix.
 
 ### Code Requirements
 
 1. The programming language is always python.
-2. Annotate the size of the tensor as comment after each tensor operation. For example, ‘# (B)‘.
+2. Annotate the size of the tensor as comment after each tensor operation. For example, ‘# (B, 3, 3)‘.
 3. The only library allowed is PyTorch. Follow the examples provided by the user and check the PyTorch documentation to learn how to use PyTorch.
 4. Separate the code into continuous physical parameters that can be tuned with differentiable optimization and the symbolic constitutive law represented by PyTorch code. Define them respectively in the ‘__init__‘ function and the ‘forward‘ function. Keep the continuous physical parameters in the list ‘self.params‘.
 5. The output of the ‘forward‘ function is the First Piola-Kirchhoff stress tensor P.
@@ -256,17 +262,17 @@ class Physics(torch.nn.Module):
         Compute First Piola Kirchhoff stress tensor from deformation gradient tensor.
 
         Args:
-            F (torch.Tensor): [1,1]-components of deformation gradient tensor (B).
+            F (torch.Tensor): deformation gradient tensor (B, 3, 3).
 
         Returns:
-            first_piola_kirchhoff_stress (torch.Tensor): [1,1]-components of First Piola Kirchhoff stress tensor (B).
+            first_piola_kirchhoff_stress (torch.Tensor): First Piola Kirchhoff stress tensor (B, 3, 3).
         """
         return first_piola_kirchhoff_stress
 ```
 
 ### Solution Requirements
 
-1. Try to model the constitutive behavior by computing the right Cauchy-Green deformation tensor C and using its first and second invariant. This appears to be the most promising approach.
+1. Try to model the constitutive behavior by computing the right Cauchy-Green deformation tensor C and using its eigenvalues' square roots as principal stretches. This appears to be the most promising approach.
 2. When there is no strain, indicated by a deformation gradient value of 1, the first Piola-Kirchhoff stress tensor must be zero.
 3. Analyze step-by-step what the potential problem is in the previous iterations based on the feedback. Think about why the results from previous constitutive laws mismatched with the ground truth. Do not give advice about how to optimize. Focus on the formulation of the constitutive law. Start this section with "### Analysis". Analyze all iterations individually, and start the subsection for each iteration with "#### Iteration N", where N stands for the index. Remember to analyze every iteration in the history.
 4. Think step-by-step what you need to do in this iteration. Think about how to separate your algorithm into a continuous physical parameter part and a symbolic constitutive law part. Describe your plan in pseudo-code, written out in great detail. Remember to update the default values of the trainable physical parameters based on previous optimizations. Start this section with "### Step-by-Step Plan".
@@ -276,10 +282,12 @@ class Physics(torch.nn.Module):
 
     def write_fit_code(self):
         match self._config["problem"]:
-            case "synthetic_a" | "synthetic_b" | "treloar":
+            case "synthetic_a" | "synthetic_b":
                 return self._write_synthetic_fit_code()
             case "brain":
                 return self._write_brain_fit_code()
+            case "treloar":
+                return self._write_treloar_fit_code()
             case _:
                 raise ValueError("Invalid problem type.")
 
@@ -368,4 +376,43 @@ class Physics(torch.nn.Module):
 
 
     def _write_treloar_fit_code(self):
-        pass
+        return '''
+    def fit(self, x, y, epochs=1000, lr=0.001, factor=0.1, patience=10, warmup_epochs=10, max_norm=1.0):
+        """
+        Trains the regression model.
+
+        Args:
+            x (dict):                      Dictionary of input tensors.
+            y (dict):                      Dictionary of target tensors.
+            epochs (int, optional):        Number of epochs to train.
+            lr (float, optional):          Learning rate for the optimizer.
+            warmup_epochs (int, optional): Number of epochs for learning rate warm-up.
+            max_norm (float, optional):    Maximum norm for gradient clipping.
+
+        This method trains the model using a torch optimizer.
+        """
+        optimizer        = torch.optim.Adam(self.params, lr=lr)
+        scheduler        = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=factor, patience=patience)
+        warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: min(1.0, epoch / warmup_epochs))
+        
+        for epoch in range(epochs):
+            optimizer.zero_grad()
+            
+            pred            = {}
+            pred['uni-x']   = self.forward(x['uni-x'  ])[:,0,0]
+            pred['equi']    = self.forward(x['equi'   ])[:,0,0]
+            pred['strip-x'] = self.forward(x['strip-x'])[:,0,0]
+            pred_cat = torch.cat(list(pred.values()))
+            y_cat    = torch.cat(list(   y.values()))
+            
+            loss = torch.nn.MSELoss()(pred_cat, y_cat)
+            loss.backward()
+            
+            torch.nn.utils.clip_grad_norm_(self.params, max_norm)
+            optimizer.step()
+            
+            if epoch < warmup_epochs:
+                warmup_scheduler.step()
+            else:
+                scheduler.step(loss)
+'''
